@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  password     String
+  createdAt    DateTime      @default(now()) @map("created_at")
+  transactions Transaction[]
+  categories   Category[]
+}
+
+model Transaction {
+  id        Int             @id @default(autoincrement())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int             @map("user_id")
+  name      String
+  amount    Float
+  type      TransactionType
+  category  String
+  date      DateTime
+  note      String          @default("")
+  createdAt DateTime        @default(now()) @map("created_at")
+}
+
+model Category {
+  id      Int             @id @default(autoincrement())
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  Int             @map("user_id")
+  name    String
+  type    TransactionType
+  icon    String          @default("📦")
+}
