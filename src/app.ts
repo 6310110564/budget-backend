@@ -22,6 +22,7 @@ app.use(
 app.use(express.json())
 
 app.get('/health', (_, res) => res.json({ status: 'ok' }))
+app.get('/hello', (_, res) => res.json({ message: 'Hello World' }))
 
 type RouteModule = express.Router | { prefix: string; router: express.Router }
 
