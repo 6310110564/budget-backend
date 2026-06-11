@@ -1,138 +1,119 @@
-import { Request, Response } from 'express'
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import prisma from '../config/prisma.js'
-import { TransactionType } from '@prisma/client'
+import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import prisma from '../config/prisma.js';
+import { TransactionType } from '@prisma/client';
+import { defaultIncomes, defaultExpenses } from '../config/constant.js';
 
 type AuthRequest = Request & {
   user?: {
-    id: number
-    email: string
-    name: string
-  }
-}
+    id: number;
+    email: string;
+    name: string;
+  };
+};
 
 type UserPayload = {
-  name: string
-  email: string
-  password: string
-}
-
-type CategorySeed = {
-  name: string
-  icon: string
-}
-
-const defaultIncomes: CategorySeed[] = [
-  { name: 'เงินเดือน', icon: '💼' },
-  { name: 'โบนัส', icon: '🎁' },
-  { name: 'Freelance', icon: '💻' },
-  { name: 'ลงทุน', icon: '📈' },
-  { name: 'อื่นๆ', icon: '💰' }
-]
-
-const defaultExpenses: CategorySeed[] = [
-  { name: 'อาหาร', icon: '🍜' },
-  { name: 'เดินทาง', icon: '🚗' },
-  { name: 'ที่พัก', icon: '🏠' },
-  { name: 'สุขภาพ', icon: '💊' },
-  { name: 'บันเทิง', icon: '🎮' },
-  { name: 'ช้อปปิ้ง', icon: '🛍️' },
-  { name: 'ออม', icon: '🏦' },
-  { name: 'อื่นๆ', icon: '📦' }
-]
+  name: string;
+  email: string;
+  password: string;
+};
 
 function createToken(user: { id: number; email: string; name: string }) {
-  return jwt.sign({ id: user.id, email: user.email, name: user.name }, process.env.JWT_SECRET || 'secret', {
-    expiresIn: '7d'
-  })
+  return jwt.sign(
+    { id: user.id, email: user.email, name: user.name },
+    process.env.JWT_SECRET || 'secret',
+    {
+      expiresIn: '7d',
+    }
+  );
 }
 
 export async function register(req: Request, res: Response) {
   try {
-    const { name, email, password } = req.body as UserPayload
+    const { name, email, password } = req.body as UserPayload;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบ' })
+      return res.badRequest('กรุณากรอกชื่อ อีเมล และรหัสผ่าน');
     }
     if (password.length < 6) {
-      return res.status(400).json({ message: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' })
+      return res.badRequest('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } })
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ message: 'อีเมลนี้ถูกใช้แล้ว' })
+      return res.badRequest('อีเมลนี้ถูกใช้แล้ว');
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
         name,
         email,
-        password: passwordHash
-      }
-    })
+        password: passwordHash,
+      },
+    });
 
     const categories = [
       ...defaultIncomes.map((item) => ({
         userId: user.id,
         name: item.name,
         type: TransactionType.income,
-        icon: item.icon
+        icon: item.icon,
       })),
       ...defaultExpenses.map((item) => ({
         userId: user.id,
         name: item.name,
         type: TransactionType.expense,
-        icon: item.icon
-      }))
-    ]
+        icon: item.icon,
+      })),
+    ];
 
-    await prisma.category.createMany({ data: categories } as any)
+    await prisma.category.createMany({ data: categories } as any);
 
-    return res.status(201).json({
+    return res.created({
       token: createToken(user),
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
-      }
-    })
+        email: user.email,
+      },
+    });
   } catch (error) {
-    console.error('Register error:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการลงทะเบียน' })
+    console.error('Register error:', error);
+    return res.error({ message: 'เกิดข้อผิดพลาดในการลงทะเบียน' });
   }
 }
 
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = req.body as { email: string; password: string }
+    const { email, password } = req.body as { email: string; password: string };
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'กรุณากรอกอีเมลและรหัสผ่าน' })
+      return res.badRequest('กรุณากรอกอีเมลและรหัสผ่าน');
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' })
+      return res.unauthorized('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
-    const isValid = await bcrypt.compare(password, user.password)
+    const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' })
+      return res.unauthorized('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
 
-    return res.json({
+    return res.ok({
       token: createToken(user),
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
-      }
-    })
+        email: user.email,
+      },
+    });
   } catch (error) {
-    console.error('Login error:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' })
+    console.error('Login error:', error);
+    return res.error({ message: 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' });
   }
 }
 
@@ -140,16 +121,16 @@ export async function getMe(req: AuthRequest, res: Response) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user?.id ?? 0 },
-      select: { id: true, name: true, email: true, createdAt: true }
-    })
+      select: { id: true, name: true, email: true, createdAt: true },
+    });
 
     if (!user) {
-      return res.status(404).json({ message: 'ไม่พบผู้ใช้' })
+      return res.notFound('ไม่พบผู้ใช้');
     }
 
-    return res.json(user)
+    return res.ok(user);
   } catch (error) {
-    console.error('Get profile error:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้' })
+    console.error('Get profile error:', error);
+    return res.error({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้' });
   }
 }

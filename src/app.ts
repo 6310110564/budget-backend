@@ -4,6 +4,7 @@ import authRoutes from './routes/auth.js'
 import transactionRoutes from './routes/transactions.js'
 import categoryRoutes from './routes/categories.js'
 import testRoutes from './routes/test.js'
+import { responseHandlerMiddleware } from './middleware/response-handler.js'
 
 const app = express()
 const allowedOrigins = ['http://localhost:3000', process.env.FRONTEND_URL].filter(Boolean)
@@ -21,6 +22,7 @@ app.use(
   })
 )
 app.use(express.json())
+app.use(responseHandlerMiddleware)
 
 app.get('/health', (_, res) => res.json({ status: 'ok นะจ๊ะ' }))
 

@@ -46,10 +46,10 @@ export async function getTransactions(req: AuthRequest, res: Response) {
       ]
     })
 
-    return res.json(transactions)
+    return res.ok(transactions)
   } catch (error) {
     console.error('Error fetching transactions:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการ' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการ' })
   }
 }
 
@@ -77,7 +77,7 @@ export async function getSummary(req: AuthRequest, res: Response) {
 
     const totalIncome = incomeResult._sum.amount ?? 0
     const totalExpense = expenseResult._sum.amount ?? 0
-    return res.json({
+    return res.ok({
       total_income: totalIncome,
       total_expense: totalExpense,
       balance: totalIncome - totalExpense,
@@ -89,7 +89,7 @@ export async function getSummary(req: AuthRequest, res: Response) {
     })
   } catch (error) {
     console.error('Error fetching summary:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการคำนวณสรุป' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการคำนวณสรุป' })
   }
 }
 
@@ -126,13 +126,13 @@ export async function createTransaction(req: AuthRequest, res: Response) {
         note: req.body.note || ''
       }
     })
-    return res.status(201).json(transaction)
+    return res.created(transaction)
   } catch (error) {
     if ((error as any).status) {
       return res.status((error as any).status).json({ message: (error as any).message })
     }
     console.error('Error creating transaction:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสร้างรายการ' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการสร้างรายการ' })
   }
 }
 
@@ -143,7 +143,7 @@ export async function updateTransaction(req: AuthRequest, res: Response) {
       where: { id: transactionId, userId: req.user?.id }
     })
     if (!existing) {
-      return res.status(404).json({ message: 'ไม่พบรายการ' })
+      return res.notFound('ไม่พบรายการ')
     }
 
     const data = {
@@ -156,23 +156,23 @@ export async function updateTransaction(req: AuthRequest, res: Response) {
     }
 
     if (!['income', 'expense'].includes(data.type)) {
-      return res.status(400).json({ message: 'ประเภทต้องเป็น income หรือ expense' })
+      return res.badRequest('ประเภทต้องเป็น income หรือ expense')
     }
     if (data.amount <= 0) {
-      return res.status(400).json({ message: 'จำนวนเงินต้องมากกว่า 0' })
+      return res.badRequest('จำนวนเงินต้องมากกว่า 0')
     }
 
     const updated = await prisma.transaction.update({
       where: { id: transactionId },
       data
     })
-    return res.json(updated)
+    return res.ok(updated)
   } catch (error) {
     if ((error as any).status) {
       return res.status((error as any).status).json({ message: (error as any).message })
     }
     console.error('Error updating transaction:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปเดตรายการ' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการอัปเดตรายการ' })
   }
 }
 
@@ -183,16 +183,16 @@ export async function deleteTransaction(req: AuthRequest, res: Response) {
       where: { id: transactionId, userId: req.user?.id }
     })
     if (!existing) {
-      return res.status(404).json({ message: 'ไม่พบรายการ' })
+      return res.notFound('ไม่พบรายการ')
     }
 
     await prisma.transaction.delete({ where: { id: transactionId } })
-    return res.json({ message: 'ลบรายการสำเร็จ' })
+    return res.ok({ message: 'ลบรายการสำเร็จ' })
   } catch (error) {
     if ((error as any).status) {
       return res.status((error as any).status).json({ message: (error as any).message })
     }
     console.error('Error deleting transaction:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการลบรายการ' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการลบรายการ' })
   }
 }

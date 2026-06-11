@@ -18,10 +18,10 @@ export async function getCategories(req: AuthRequest, res: Response) {
       orderBy: { name: 'asc' }
     })
 
-    return res.json(categories)
+    return res.ok(categories)
   } catch (error) {
     console.error('Error fetching categories:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลหมวดหมู่' })
   }
 }
 
@@ -29,17 +29,17 @@ export async function createCategory(req: AuthRequest, res: Response) {
   try {
     const { name, type, icon } = req.body as { name?: string; type?: string; icon?: string }
     if (!name || !type) {
-      return res.status(400).json({ message: 'กรุณากรอกชื่อและประเภท' })
+      return res.badRequest('กรุณากรอกชื่อและประเภท')
     }
     if (!['income', 'expense'].includes(type)) {
-      return res.status(400).json({ message: 'ประเภทต้องเป็น income หรือ expense' })
+      return res.badRequest('ประเภทต้องเป็น income หรือ expense')
     }
 
     const existing = await prisma.category.findFirst({
       where: { userId: req.user?.id, name, type: TransactionType[type as 'income' | 'expense'] }
     })
     if (existing) {
-      return res.status(409).json({ message: 'หมวดหมู่นี้มีอยู่แล้ว' })
+      return res.badRequest('หมวดหมู่นี้มีอยู่แล้ว')
     }
 
     const category = await prisma.category.create({
@@ -51,10 +51,10 @@ export async function createCategory(req: AuthRequest, res: Response) {
       }
     })
 
-    return res.status(201).json(category)
+    return res.created(category)
   } catch (error) {
     console.error('Error creating category:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสร้างหมวดหมู่' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการสร้างหมวดหมู่' })
   }
 }
 
@@ -65,13 +65,13 @@ export async function deleteCategory(req: AuthRequest, res: Response) {
       where: { id: categoryId, userId: req.user?.id }
     })
     if (!existing) {
-      return res.status(404).json({ message: 'ไม่พบหมวดหมู่' })
+      return res.notFound('ไม่พบหมวดหมู่')
     }
 
     await prisma.category.delete({ where: { id: categoryId } })
-    return res.json({ message: 'ลบหมวดหมู่สำเร็จ' })
+    return res.ok({ message: 'ลบหมวดหมู่สำเร็จ' })
   } catch (error) {
     console.error('Error deleting category:', error)
-    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการลบหมวดหมู่' })
+    return res.error({ message: 'เกิดข้อผิดพลาดในการลบหมวดหมู่' })
   }
 }
