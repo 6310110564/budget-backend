@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import prisma from '../config/prisma.js'
+import { TransactionType } from '@prisma/client'
 
 type AuthRequest = Request & {
   user?: {
@@ -76,18 +77,18 @@ export async function register(req: Request, res: Response) {
       ...defaultIncomes.map((item) => ({
         userId: user.id,
         name: item.name,
-        type: 'income',
+        type: TransactionType.income,
         icon: item.icon
       })),
       ...defaultExpenses.map((item) => ({
         userId: user.id,
         name: item.name,
-        type: 'expense',
+        type: TransactionType.expense,
         icon: item.icon
       }))
     ]
 
-    await prisma.category.createMany({ data: categories })
+    await prisma.category.createMany({ data: categories } as any)
 
     return res.status(201).json({
       token: createToken(user),

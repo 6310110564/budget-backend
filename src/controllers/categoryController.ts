@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import prisma from '../config/prisma.js'
+import { TransactionType } from '@prisma/client'
 
 type AuthRequest = Request & {
   user?: {
@@ -35,7 +36,7 @@ export async function createCategory(req: AuthRequest, res: Response) {
     }
 
     const existing = await prisma.category.findFirst({
-      where: { userId: req.user?.id, name, type }
+      where: { userId: req.user?.id, name, type: TransactionType[type as 'income' | 'expense'] }
     })
     if (existing) {
       return res.status(409).json({ message: 'หมวดหมู่นี้มีอยู่แล้ว' })
@@ -45,7 +46,7 @@ export async function createCategory(req: AuthRequest, res: Response) {
       data: {
         userId: req.user?.id ?? 0,
         name,
-        type,
+        type: TransactionType[type as 'income' | 'expense'],
         icon: icon || '📦'
       }
     })

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import prisma from '../config/prisma.js'
+import { TransactionType } from '@prisma/client'
 
 type AuthRequest = Request & {
   user?: {
@@ -60,11 +61,11 @@ export async function getSummary(req: AuthRequest, res: Response) {
 
     const incomeResult = await prisma.transaction.aggregate({
       _sum: { amount: true },
-      where: { ...where, type: 'income' }
+      where: { ...where, type: TransactionType.income }
     })
     const expenseResult = await prisma.transaction.aggregate({
       _sum: { amount: true },
-      where: { ...where, type: 'expense' }
+      where: { ...where, type: TransactionType.expense }
     })
 
     const byCategory = await prisma.transaction.groupBy({
